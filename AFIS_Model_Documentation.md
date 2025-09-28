@@ -1,103 +1,103 @@
-# AFIS Concurrency Prediction - Dokumentasjon
+# AFIS Concurrency Prediction - Documentation
 
-## a. Metodevalg og tilnærming
+## a. Method Selection and Approach
 
-**Problemstilling**: Predikere når AFIS-operatører vil oppleve samtidig kommunikasjon med flere fly i samme time.
+**Problem Statement**: Predict when AFIS operators will experience concurrent communication with multiple aircraft within the same hour.
 
-**Valgt metode**: Random Forest maskinlæring
-- Samtidighet oppstår når kommunikasjonsvinduene til fly overlapper
-- For ankomster: 16 minutter før til 5 minutter etter landing
-- For avganger: 15 minutter før til 8 minutter etter avgang
+**Chosen Method**: Random Forest machine learning
+- Concurrency occurs when aircraft communication windows overlap
+- For arrivals: 16 minutes before to 5 minutes after landing
+- For departures: 15 minutes before to 8 minutes after takeoff
 
-**Hvorfor Random Forest**:
-- Kan håndtere mange forskjellige typer variabler (tall, kategorier, tid)
-- Gir tydelig forklaring på hvilke faktorer som påvirker prediksjoner
-- Robust mot feil i data
-- Egnet for denne type binær klassifisering (samtidighet/ikke samtidighet)
+**Why Random Forest**:
+- Can handle many different types of variables (numerical, categorical, temporal)
+- Provides clear explanation of which factors influence predictions
+- Robust against data errors and outliers
+- Well-suited for this type of binary classification (concurrency/no concurrency)
 
-## b. Systemstruktur og arkitektur
+## b. System Structure and Architecture
 
-**Systemkomponenter**:
+**System Components**:
 ```
-Historiske flydata → Databehandling → Modelltrening → Prediksjoner
-     (2018-2025)         ↓               ↓            ↓
-                    Feature engineering  Validering   Oktober 2025
+Historical Flight Data → Data Processing → Model Training → Predictions
+      (2018-2025)           ↓               ↓             ↓
+                     Feature Engineering  Validation   October 2025
 ```
 
-**Arkitektur**:
-1. **Datainnlesing**: CSV-filer med flydata og flyplassgrupper
-2. **Databehandling**: Rydding av data, håndtering av kansellerte fly
-3. **Feature engineering**: Lage nye variabler fra rådata
-4. **Modelltrening**: Random Forest med tidsbasert validering
-5. **Prediksjon**: Generer sannsynligheter for oktober 2025
+**Architecture**:
+1. **Data Loading**: CSV files with flight data and airport groups
+2. **Data Processing**: Data cleaning, handling cancelled flights
+3. **Feature Engineering**: Create new variables from raw data
+4. **Model Training**: Random Forest with time-based validation
+5. **Prediction**: Generate probabilities for October 2025
 
-**Tekniske komponenter**:
-- Python 3.9+ med pandas, scikit-learn
-- Ingen eksterne API-er nødvendig
-- Standalone applikasjon
+**Technical Components**:
+- Python 3.9+ with pandas, scikit-learn
+- No external APIs required
+- Standalone application
 
-## c. Modeller og algoritmer
+## c. Models and Algorithms
 
-**Hovedmodell**: Random Forest Classifier
-- 100 trær i ensemblet
-- Maksimal dybde: 10 nivåer
+**Main Model**: Random Forest Classifier
+- 100 trees in the ensemble
+- Maximum depth: 10 levels
 - Minimum samples per split: 10
-- Balanserte klassegewichter for å håndtere sjeldne samtidighetshendelser
+- Balanced class weights to handle rare concurrency events
 
-**Evalueringsmetode**:
-- AUC-ROC som hovedmetrikk (oppnådd: 0.9563)
-- Tidsbasert validering: data før 2024 for trening, 2024+ for validering
-- Unngår datalekkasje ved å ikke bruke fremtidig informasjon
+**Evaluation Method**:
+- AUC-ROC as primary metric (achieved: 0.9563)
+- Time-based validation: pre-2024 data for training, 2024+ for validation
+- Avoids data leakage by not using future information
 
-**Viktigste variabler** (feature importance):
-1. Planlagt samtidighet (34%): Om rutetabellen antyder overlapp
-2. Antall fly per time (20%): Flere fly = høyere risiko
-3. Samtidighetsrisiko-flagg (20%): Binær indikator for kritiske timer
-4. Fly-time interaksjon (14%): Kombinasjonseffekt av volum og tidspunkt
+**Most Important Variables** (feature importance):
+1. Scheduled concurrency (34%): Whether the timetable suggests overlap
+2. Number of flights per hour (20%): More flights = higher risk
+3. Concurrency risk flag (20%): Binary indicator for critical hours
+4. Flight-hour interaction (14%): Combined effect of volume and timing
 
-## d. Kildekode
+## d. Source Code
 
-**Filstruktur**:
-- `afis_simple_model.py`: Hovedmodell som genererer prediksjoner
-- `afis_concurrency_model.py`: Utvidet implementering med detaljert feature engineering
-- `october_2025_predictions.csv`: Ferdig prediksjonsfil
-- `feature_importance.csv`: Forklaring av modellens beslutningsgrunnlag
+**File Structure**:
+- `afis_simple_model.py`: Main model that generates predictions
+- `afis_concurrency_model.py`: Extended implementation with detailed feature engineering
+- `october_2025_predictions.csv`: Final prediction file
+- `feature_importance.csv`: Explanation of the model's decision basis
 
-**Installasjon og kjøring**:
+**Installation and Execution**:
 ```bash
-# Krav: Python 3.9+, pandas, scikit-learn, numpy
+# Requirements: Python 3.9+, pandas, scikit-learn, numpy
 pip install pandas scikit-learn numpy
 
-# Kjør modellen
+# Run the model
 python afis_simple_model.py
 ```
 
-**Hovedkomponenter i koden**:
+**Main Code Components**:
 
-1. **SimplifiedAFISModel klasse**:
-   - `load_and_prepare_data()`: Laster inn data
-   - `engineer_core_features()`: Lager prediksjonsvariabler
-   - `train_model()`: Trener Random Forest
-   - `predict_october()`: Generer oktober-prediksjoner
+1. **SimplifiedAFISModel class**:
+   - `load_and_prepare_data()`: Loads data
+   - `engineer_core_features()`: Creates prediction variables
+   - `train_model()`: Trains Random Forest
+   - `predict_october()`: Generates October predictions
 
-2. **Feature engineering**:
-   - Tid-baserte variabler: time på døgnet, ukedag, sesong
-   - Flytrafikk-variabler: antall fly, planlagt samtidighet
-   - Interaksjonsvariabler: kombinerte effekter
+2. **Feature Engineering**:
+   - Time-based variables: hour of day, day of week, season
+   - Flight traffic variables: number of flights, scheduled concurrency
+   - Interaction variables: combined effects
 
-3. **Modelltrening**:
-   - Tidsbasert datasplit for realistisk validering
-   - Hyperparameter-optimalisering for beste ytelse
-   - Feature importance-analyse for forklarbarhet
+3. **Model Training**:
+   - Time-based data split for realistic validation
+   - Hyperparameter optimization for best performance
+   - Feature importance analysis for explainability
 
-**Skalering og videreutvikling**:
-- Kan håndtere større datasett ved å øke sample-størrelse
-- Enkel å legge til nye variabler (vær, forsinkelser, etc.)
-- Modellen kan retrenes med nye data uten kodeendringer
+**Scaling and Further Development**:
+- Can handle larger datasets by increasing sample size
+- Easy to add new variables (weather, delays, etc.)
+- Model can be retrained with new data without code changes
 
-**Resultater**:
-- **Validerings-AUC**: 0.9563 (svært god prediksjonsevne)
-- **Oktober-prediksjoner**: 5,047 time-prediksjoner generert
-- **Høyrisiko-timer**: 1,256 timer identifisert (25% av total)
+**Results**:
+- **Validation AUC**: 0.9563 (very good predictive ability)
+- **October predictions**: 5,047 hourly predictions generated
+- **High-risk hours**: 1,256 hours identified (25% of total)
 
-Modellen viser at antall planlagte fly og tidsintervaller mellom fly er de sterkeste indikatorene for samtidighetsrisiko, noe som stemmer godt med operasjonell erfaring.
+The model shows that the number of scheduled flights and time intervals between flights are the strongest indicators of concurrency risk, which aligns well with operational experience.
