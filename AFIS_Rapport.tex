@@ -1,0 +1,301 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[norsk]{babel}
+\usepackage{amsmath,amsfonts,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{url}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{geometry}
+\geometry{margin=2.5cm}
+
+% Code styling
+\lstset{
+    language=Python,
+    basicstyle=\ttfamily\small,
+    keywordstyle=\color{blue},
+    commentstyle=\color{gray},
+    stringstyle=\color{red},
+    numbers=left,
+    numberstyle=\tiny,
+    frame=single,
+    breaklines=true
+}
+
+\title{AFIS Concurrency Prediction Model - Dokumentasjon for Datakonkurranse}
+\author{Mona Helness}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+Denne rapporten dokumenterer løsningen for Avinors datakonkurranse "Når går det på høygir?". Løsningen predikerer sannsynlighet for samtidighetshendelser i AFIS-operasjoner ved bruk av Random Forest maskinlæring. Modellen oppnår AUC-ROC på 0.9563 og identifiserer antall planlagte fly og kommunikasjonsvindu-overlapp som de viktigste risikofaktorene for oktober 2025.
+\end{abstract}
+
+\section{a. Metodevalg og tilnærming}
+
+\subsection{Problemstilling og tilnærming}
+Oppgaven er å predikere sannsynlighet for samtidighetshendelser hvor AFIS-operatører kommuniserer med flere fly samtidig. Samtidighet defineres av overlappende kommunikasjonsintervaller:
+\begin{itemize}
+    \item \textbf{Ankomster}: 16 minutter før til 5 minutter etter landing
+    \item \textbf{Avganger}: 15 minutter før til 8 minutter etter avgang
+\end{itemize}
+
+\subsection{Valgt metodikk}
+\textbf{Random Forest maskinlæring} ble valgt som hovedmetode.
+
+\textbf{Begrunnelse for metodevalgene}:
+\begin{enumerate}
+    \item \textbf{Binær klassifisering}: Problemet krever predikering av samtidighet/ikke-samtidighet per time
+    \item \textbf{Forklarbarhet}: Avinor krever transparente modeller for regulatoriske formål
+    \item \textbf{Mixed data types}: Metoden håndterer både kategoriske (flyplassgruppe, sesong) og numeriske (flyantall, tid) variabler
+    \item \textbf{Robust mot outliers}: Viktig for operasjonelle data med potensielle datafeil
+    \item \textbf{Feature importance}: Gir innsikt i hvilke faktorer som driver samtidighetsrisiko
+    \item \textbf{Ubalanserte klasser}: Samtidighetshendelser er sjeldne - Random Forest håndterer dette godt
+\end{enumerate}
+
+\subsection{Datagrunnlag}
+Løsningen baserer seg på:
+\begin{itemize}
+    \item Historiske flydata (2018-2025): 399,426 flybevegelser
+    \item Eksisterende treningsdata: 465,031 time-observasjoner med targets
+    \item Oktober 2025 ruteplan: 3,984 planlagte fly
+    \item 7 flyplassgrupper (A-G) med 3 flyplasser hver
+\end{itemize}
+
+\section{b. Systemstruktur og arkitektur}
+
+\subsection{Systemarkitektur og komponenter}
+
+\textbf{Overordnet arkitektur}:
+\begin{center}
+\texttt{CSV Data} $\rightarrow$ \texttt{Python Databehandling} $\rightarrow$ \texttt{Scikit-learn ML} $\rightarrow$ \texttt{CSV Prediksjoner}
+\end{center}
+
+\textbf{Tekniske komponenter}:
+\begin{itemize}
+    \item \textbf{Datainnlesing}: Pandas for CSV-håndtering
+    \item \textbf{Feature Engineering}: Custom Python-funksjoner
+    \item \textbf{Maskinlæring}: Scikit-learn RandomForestClassifier
+    \item \textbf{Validering}: TimeSeriesSplit for tidsbasert validering
+    \item \textbf{Output}: CSV-generator for kompetanse-formatet
+\end{itemize}
+
+\textbf{Ingen eksterne API-er}: Løsningen er standalone og krever kun Python-biblioteker.
+
+\subsection{Dataflyt og prosessering}
+
+\textbf{Steg 1}: Innlesing av treningsdata (465,031 timer) og oktober-ruteplan (3,984 fly)
+
+\textbf{Steg 2}: Feature engineering - transformasjon av rådata til prediksjonsvariabler
+
+\textbf{Steg 3}: Tidsbasert datasplit (før 2024 = trening, 2024+ = validering)
+
+\textbf{Steg 4}: Random Forest trening med hyperparameter-optimalisering
+
+\textbf{Steg 5}: Generering av oktober 2025 prediksjoner (5,047 timer)
+
+\subsection{Arkitektur-visualisering}
+\begin{center}
+\begin{tabular}{|c|c|c|c|}
+\hline
+\textbf{Input} & \textbf{Processing} & \textbf{Model} & \textbf{Output} \\
+\hline
+Flydata CSV & Feature Engineering & Random Forest & Prediksjoner CSV \\
+Treningsdata CSV & Tidsbasert Split & 100 Trees & 5,047 timer \\
+Oktober Ruteplan & LabelEncoder & AUC=0.956 & Sannsynligheter \\
+\hline
+\end{tabular}
+\end{center}
+
+\section{c. Modeller og algoritmer}
+
+\subsection{Hovedmodell: Random Forest Classifier}
+
+\textbf{Algoritme}: RandomForestClassifier fra scikit-learn
+
+\textbf{Parametervalg}:
+\begin{itemize}
+    \item \texttt{n\_estimators=100}: 100 beslutningstrær i ensemblet
+    \item \texttt{max\_depth=10}: Maksimal tredybde for å unngå overfitting
+    \item \texttt{min\_samples\_split=10}: Minimum samples for å dele en node
+    \item \texttt{class\_weight='balanced'}: Håndterer ubalanserte klasser automatisk
+    \item \texttt{random\_state=42}: For reproduserbare resultater
+\end{itemize}
+
+\subsection{Feature engineering}
+
+\textbf{Tidsbaserte variabler}:
+\begin{itemize}
+    \item \texttt{hour\_of\_day}: Time på døgnet (0-23)
+    \item \texttt{day\_of\_week}: Ukedag (0-6)
+    \item \texttt{month}: Måned (1-12)
+    \item \texttt{is\_weekend}: Binær helg-indikator
+    \item \texttt{hour\_group}: Kategorisk (night/morning/afternoon/evening)
+\end{itemize}
+
+\textbf{Operasjonelle variabler}:
+\begin{itemize}
+    \item \texttt{feat\_sched\_flights\_cnt}: Antall planlagte fly per time
+    \item \texttt{feat\_sched\_concurrence}: Eksisterende samtidighets-indikator
+    \item \texttt{concurrence\_risk}: Binær flagg for timer med >1 fly
+    \item \texttt{flights\_x\_hour}: Interaksjon flyvolum × tidspunkt
+\end{itemize}
+
+\textbf{Kategorisk encoding}:
+\begin{itemize}
+    \item \texttt{airport\_group\_encoded}: LabelEncoder for flyplassgrupper
+    \item \texttt{season\_encoded}: LabelEncoder for sesonger
+    \item One-hot encoding for \texttt{hour\_group} kategorier
+\end{itemize}
+
+\subsection{Evalueringsmetoder}
+
+\textbf{Tidsbasert validering}:
+\begin{itemize}
+    \item \textbf{Treningsdata}: Før 2024 (39,478 observasjoner)
+    \item \textbf{Valideringsdata}: 2024+ (10,522 observasjoner)
+    \item \textbf{Rationale}: Unngår data leakage ved å ikke bruke fremtidige data
+\end{itemize}
+
+\textbf{Evalueringsmetrikk}:
+\begin{itemize}
+    \item \textbf{Primær}: AUC-ROC (som spesifisert i konkurransekriteriene)
+    \item \textbf{Sekundær}: Precision, Recall, F1-score for klassifikasjon
+    \item \textbf{Oppnådd resultat}: AUC-ROC = 0.9563
+\end{itemize}
+
+\section{d. Kildekode}
+
+\subsection{Oversikt over kodebasen}
+
+\textbf{Hovedfiler}:
+\begin{itemize}
+    \item \texttt{afis\_simple\_model.py}: Hovedimplementering (funksjoner og kjører prediksjoner)
+    \item \texttt{afis\_concurrency\_model.py}: Utvidet implementering med detaljert feature engineering
+    \item \texttt{Helness\_october\_2025\_predictions.csv}: Ferdig prediksjonsfil for innlevering
+    \item \texttt{feature\_importance.csv}: Modellforklaring og feature-ranking
+\end{itemize}
+
+\subsection{Hovedkomponenter i koden}
+
+\textbf{SimplifiedAFISModel klasse} med følgende metoder:
+
+\begin{lstlisting}[caption=Hovedstruktur]
+class SimplifiedAFISModel:
+    def load_and_prepare_data(self):
+        # Laster CSV-filer med pandas
+        # Renser data (fjerner kansellasjoner, håndterer datoer)
+
+    def engineer_core_features(self, data_df):
+        # Lager tidsbaserte features (time, ukedag, sesong)
+        # Lager operasjonelle features (flyantall, samtidighet)
+        # Encoder kategoriske variabler
+
+    def train_model(self, features_df):
+        # Tidsbasert datasplit (før/etter 2024)
+        # Random Forest trening med Grid Search
+        # Feature importance analyse
+
+    def predict_october(self, model, feature_cols):
+        # Lager oktober template med alle timer/grupper
+        # Beregner features fra oktober-ruteplanen
+        # Genererer sannsynligheter per time
+\end{lstlisting}
+
+\subsection{Installasjon og kjøring}
+
+\textbf{Systemkrav}:
+\begin{itemize}
+    \item Python 3.9+
+    \item pandas, scikit-learn, numpy (standard ML-biblioteker)
+\end{itemize}
+
+\textbf{Installasjonsinstruksjoner}:
+\begin{lstlisting}[language=bash]
+# Installer nødvendige pakker
+pip install pandas scikit-learn numpy
+
+# Kjør hovedmodellen
+python afis_simple_model.py
+\end{lstlisting}
+
+\textbf{Output}:
+\begin{itemize}
+    \item \texttt{Helness\_october\_2025\_predictions.csv}: Hovedleveranse
+    \item \texttt{feature\_importance.csv}: Modellforklaring
+    \item Konsoll-output med AUC og modellstatistikk
+\end{itemize}
+
+\subsection{Videreutvikling og skalering}
+
+\textbf{Skalering}:
+\begin{itemize}
+    \item Modellen kan håndtere større datasett ved å øke sample-størrelsen i \texttt{model.training\_data.sample()}
+    \item Random Forest parallellisering gjennom \texttt{n\_jobs=-1} for raskere trening
+\end{itemize}
+
+\textbf{Utvidelsesmuligheter}:
+\begin{itemize}
+    \item \textbf{Værdata}: Integrer METAR API for vær-features
+    \item \textbf{Real-time}: Koble til live flydata for sanntids-prediksjoner
+    \item \textbf{Andre algoritmer}: XGBoost implementering finnes i \texttt{afis\_concurrency\_model.py}
+    \item \textbf{Feature engineering}: \texttt{afis\_concurrency\_model.py} viser avanserte features som kommunikasjonsvindu-beregning
+\end{itemize}
+
+\textbf{Vedlikehold}:
+\begin{itemize}
+    \item Modellen kan retrenes automatisk med nye data uten kodeendringer
+    \item Feature engineering er modulært og kan utvides
+    \item Tidsbasert validering sikrer realistisk evaluering av nye modeller
+\end{itemize}
+
+\subsection{Hovedresultater}
+
+\textbf{Modellytelse}:
+\begin{itemize}
+    \item \textbf{AUC-ROC}: 0.9563 (utmerket diskrimineringsevne)
+    \item \textbf{Treningssett}: 39,478 observasjoner, positive rate 21.6\%
+    \item \textbf{Valideringssett}: 10,522 observasjoner, positive rate 25.2\%
+\end{itemize}
+
+\textbf{Oktober 2025 prediksjoner}:
+\begin{itemize}
+    \item \textbf{Totalt}: 5,047 time-prediksjoner generert
+    \item \textbf{Gjennomsnittlig risiko}: 27.85\%
+    \item \textbf{Høyrisiko-timer} ($>0.5$): 1,256 timer (24.9\%)
+    \item \textbf{Sannsynlighetsområde}: 0.002 - 0.991
+\end{itemize}
+
+\textbf{Viktigste risikofaktorer}:
+\begin{center}
+\begin{tabular}{lr}
+\toprule
+Feature & Importance \\
+\midrule
+Planlagt samtidighet & 34.0\% \\
+Antall fly per time & 20.1\% \\
+Samtidighets-risiko flagg & 19.7\% \\
+Fly × time interaksjon & 13.9\% \\
+Flyplassgruppe & 3.9\% \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Konklusjon}
+
+Løsningen oppfyller alle krav i datakonkurransen og leverer:
+
+\begin{enumerate}
+    \item \textbf{Høy nøyaktighet}: 95.6\% AUC overgår forventede standarder
+    \item \textbf{Praktisk anvendelighet}: Identifiserer 1,256 høyrisiko-timer for oktober
+    \item \textbf{Forklarbarhet}: Klare innsikter i at flyvolum driver samtidighetsrisiko
+    \item \textbf{Operasjonell verdi}: Gir handlingsrettede innsikter for bemanningsplanlegging
+\end{enumerate}
+
+Modellen viser at timer med $\geq 2$ planlagte fly har dramatisk høyere samtidighetsrisiko, noe som bekrefter operasjonell erfaring og gir Avinor datagrunnlag for evidensbaserte bemanningsbeslutninger.
+
+\end{document}
