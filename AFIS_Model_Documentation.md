@@ -36,6 +36,15 @@ Historical Flight Data → Data Processing → Model Training → Predictions
 - No external APIs required
 - Standalone application
 
+**Data Sources**:
+- Training data: `202509_Datasett/training_data.csv` (465,031 hourly records)
+- Historical flights: `202509_Datasett/historical_flights.csv` (399,426 flights)
+- October 2025 schedule: `schedule_oct2025_updated (1).csv` (4,565 flights - updated version)
+- October 2025 inference features: `inference_data_oct2025_updated.csv` (5,208 hourly records - updated version)
+- Airport groups: `202509_Datasett/airportgroups.csv` (21 airports in 7 groups)
+
+**Updated Datasets**: The model uses the latest updated versions of October 2025 data which contain additional flights and corrected feature values compared to the original competition datasets.
+
 ## c. Models and Algorithms
 
 **Main Model**: Random Forest Classifier
@@ -60,7 +69,7 @@ Historical Flight Data → Data Processing → Model Training → Predictions
 **File Structure**:
 - `afis_simple_model.py`: Main model that generates predictions
 - `afis_concurrency_model.py`: Extended implementation with detailed feature engineering
-- `october_2025_predictions.csv`: Final prediction file
+- `Helness_october_2025_predictions_updated.csv`: Final prediction file (using updated datasets)
 - `feature_importance.csv`: Explanation of the model's decision basis
 
 **Installation and Execution**:
@@ -68,7 +77,7 @@ Historical Flight Data → Data Processing → Model Training → Predictions
 # Requirements: Python 3.9+, pandas, scikit-learn, numpy
 pip install pandas scikit-learn numpy
 
-# Run the model
+# Run the model (generates Helness_october_2025_predictions_updated.csv)
 python afis_simple_model.py
 ```
 
@@ -98,6 +107,7 @@ python afis_simple_model.py
 **Results**:
 - **Validation AUC**: 0.9563 (very good predictive ability)
 - **October predictions**: 5,047 hourly predictions generated
-- **High-risk hours**: 1,256 hours identified (25% of total)
+- **High-risk hours**: 1,506 hours identified (c30% of total)
+- **Updated dataset impact**: 581 additional flights included, higher average probability (0.3286)
 
 The model shows that the number of scheduled flights and time intervals between flights are the strongest indicators of concurrency risk, which aligns well with operational experience.

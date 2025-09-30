@@ -39,11 +39,23 @@ class AFISConcurrencyModel:
     """Main class for AFIS concurrency prediction model."""
 
     def __init__(self, data_path="202509_Datasett/"):
+        """
+        Initialize the AFIS Concurrency Model with data paths.
+
+        Args:
+            data_path: Path to original competition datasets
+
+        Note: The model uses updated October 2025 datasets located in the root directory:
+        - schedule_oct2025_updated (1).csv: Contains 4,565 flights (581 more than original)
+        - inference_data_oct2025_updated.csv: Contains corrected pre-computed features
+        These updated datasets provide more accurate predictions for October 2025.
+        """
         self.data_path = data_path
         self.airport_groups = None
         self.historical_flights = None
         self.training_data = None
         self.oct_schedule = None
+        self.oct_inference_data = None
 
     def load_data(self):
         """Load and clean all datasets with proper datetime handling."""
@@ -74,11 +86,16 @@ class AFISConcurrencyModel:
         self.training_data['date'] = pd.to_datetime(self.training_data['date'])
         print(f"Training data: {len(self.training_data)} hourly records")
 
-        # Load October 2025 schedule
-        self.oct_schedule = pd.read_csv(f"{self.data_path}schedule_oct2025.csv")
+        # Load October 2025 schedule (using updated version with additional flights)
+        self.oct_schedule = pd.read_csv("schedule_oct2025_updated (1).csv")
         for col in ['std', 'sta']:
             self.oct_schedule[col] = pd.to_datetime(self.oct_schedule[col])
         print(f"October 2025 schedule: {len(self.oct_schedule)} flights")
+
+        # Load updated inference data
+        self.oct_inference_data = pd.read_csv("inference_data_oct2025_updated.csv")
+        self.oct_inference_data['date'] = pd.to_datetime(self.oct_inference_data['date'])
+        print(f"October 2025 inference data: {len(self.oct_inference_data)} hourly records")
 
         return self
 

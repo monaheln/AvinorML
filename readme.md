@@ -14,12 +14,17 @@ This repository contains the complete solution for Avinor's "Når går det på h
 ├── 202509_Datasett/           # Original competition data
 │   ├── training_data.csv      # Historical hourly data with targets
 │   ├── historical_flights.csv # Flight-level data 2018-2025
-│   ├── schedule_oct2025.csv   # October 2025 flight schedule
+│   ├── schedule_oct2025.csv   # October 2025 flight schedule (original)
+│   ├── inference_data_oct2025.csv # Original inference features
 │   └── airportgroups.csv      # Airport group mappings
+├── schedule_oct2025_updated (1).csv   # Updated October 2025 schedule 
+├── inference_data_oct2025_updated.csv # Updated inference features 
 ├── afis_simple_model.py       # Main prediction model (WORKING)
 ├── afis_concurrency_model.py  # Advanced implementation with full features
 ├── oktober_backtest.py        # Validation against October 2024 data
-├── Helness_october_2025_predictions.csv  # Final submission file
+├── Helness_october_2025_predictions_updated.csv  # Final submission file
+├── Helness_october_2025_predictions.csv  # Previous submission file
+├── october_2025_predictions.csv  # Latest model output
 ├── feature_importance.csv     # Model explainability data
 ├── AFIS_Rapport.tex          # Technical documentation (LaTeX)
 ├── AFIS_Model_Documentation.md # Technical documentation (Markdown)
@@ -39,7 +44,8 @@ python afis_simple_model.py
 ```
 
 **Output**:
-- `Helness_october_2025_predictions.csv` - Competition submission
+- `october_2025_predictions.csv` - Latest model output
+- `Helness_october_2025_predictions_updated.csv` - Final competition submission (copy of above)
 - `feature_importance.csv` - Model explainability
 - Console output with model performance metrics
 
@@ -61,8 +67,9 @@ python afis_simple_model.py
 ### Results
 - **Validation AUC**: 0.9563 (excellent discrimination)
 - **October 2024 backtest**: 0.7322 (realistic expectation)
-- **Predictions**: 1,256 high-risk hours identified (>50% probability)
-- **Volume calibration**: 27.8% predicted vs 27.9% actual positive rate
+- **Predictions**: 1,506 high-risk hours identified (>50% probability)
+- **Volume calibration**: Higher risk assessment due to 581 additional flights in updated data
+- **Average probability**: 0.3286 
 
 ## Files Description
 
@@ -80,8 +87,12 @@ python afis_simple_model.py
 - **`README.md`**: Competition submission summary
 
 ### Data & Results
-- **`Helness_october_2025_predictions.csv`**: Final competition submission (5,047 predictions)
+- **`Helness_october_2025_predictions_updated.csv`**: Final competition submission (5,047 predictions using updated data)
+- **`Helness_october_2025_predictions.csv`**: Previous submission (original data)
+- **`october_2025_predictions.csv`**: Latest model output
 - **`202509_Datasett/`**: Original competition datasets
+- **`schedule_oct2025_updated (1).csv`**: Updated October 2025 schedule with 581 additional flights
+- **`inference_data_oct2025_updated.csv`**: Updated inference features with corrected values
 
 ## Methodology Highlights
 

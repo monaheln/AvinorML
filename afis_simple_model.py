@@ -19,6 +19,16 @@ class SimplifiedAFISModel:
     """Streamlined model focusing on key features."""
 
     def __init__(self, data_path="202509_Datasett/"):
+        """
+        Initialize the AFIS model with data paths.
+
+        Args:
+            data_path: Path to original competition datasets
+
+        Note: The model uses updated October 2025 datasets located in the root directory:
+        - schedule_oct2025_updated (1).csv: Contains 4,565 flights (581 more than original)
+        - inference_data_oct2025_updated.csv: Contains corrected pre-computed features
+        """
         self.data_path = data_path
 
     def load_and_prepare_data(self):
@@ -29,11 +39,16 @@ class SimplifiedAFISModel:
         self.training_data = pd.read_csv(f"{self.data_path}training_data.csv")
         self.training_data['date'] = pd.to_datetime(self.training_data['date'])
 
-        # Load October schedule for predictions
-        self.oct_schedule = pd.read_csv(f"{self.data_path}schedule_oct2025.csv")
+        # Load October schedule for predictions (using updated version with additional flights)
+        self.oct_schedule = pd.read_csv("schedule_oct2025_updated (1).csv")
+
+        # Load updated inference data with pre-computed features for October 2025
+        self.oct_inference_data = pd.read_csv("inference_data_oct2025_updated.csv")
+        self.oct_inference_data['date'] = pd.to_datetime(self.oct_inference_data['date'])
 
         print(f"Training data: {len(self.training_data)} records")
         print(f"October schedule: {len(self.oct_schedule)} flights")
+        print(f"October inference data: {len(self.oct_inference_data)} hourly records")
 
         return self
 
@@ -142,23 +157,43 @@ class SimplifiedAFISModel:
         oct_data = []
         for date_hour in oct_dates:
             for group in groups:
-                # Simple flight count estimation from schedule
-                hour_flights = len(self.oct_schedule[
-                    (pd.to_datetime(self.oct_schedule['std']).dt.date == date_hour.date()) &
-                    (pd.to_datetime(self.oct_schedule['std']).dt.hour == date_hour.hour) &
-                    ((self.oct_schedule['dep_airport_group'] == group) |
-                     (self.oct_schedule['arr_airport_group'] == group))
-                ])
+                # Get pre-computed features from updated inference data
+                inference_row = self.oct_inference_data[
+                    (self.oct_inference_data['airport_group'] == group) &
+                    (self.oct_inference_data['date'].dt.date == date_hour.date()) &
+                    (self.oct_inference_data['hour'] == date_hour.hour)
+                ]
 
-                oct_data.append({
-                    'airport_group': group,
-                    'date': date_hour,
-                    'hour': date_hour.hour,
-                    'target': 0,  # Placeholder
-                    'feat_season': 'autumn',
-                    'feat_sched_flights_cnt': hour_flights,
-                    'feat_sched_concurrence': 1 if hour_flights > 1 else 0
-                })
+                if len(inference_row) > 0:
+                    # Use pre-computed features from updated inference data
+                    row = inference_row.iloc[0]
+                    oct_data.append({
+                        'airport_group': group,
+                        'date': date_hour,
+                        'hour': date_hour.hour,
+                        'target': 0,  # Placeholder
+                        'feat_season': row['feat_season'],
+                        'feat_sched_flights_cnt': row['feat_sched_flights_cnt'],
+                        'feat_sched_concurrence': row['feat_sched_concurrence']
+                    })
+                else:
+                    # Fallback to schedule-based calculation if inference data missing
+                    hour_flights = len(self.oct_schedule[
+                        (pd.to_datetime(self.oct_schedule['std']).dt.date == date_hour.date()) &
+                        (pd.to_datetime(self.oct_schedule['std']).dt.hour == date_hour.hour) &
+                        ((self.oct_schedule['dep_airport_group'] == group) |
+                         (self.oct_schedule['arr_airport_group'] == group))
+                    ])
+
+                    oct_data.append({
+                        'airport_group': group,
+                        'date': date_hour,
+                        'hour': date_hour.hour,
+                        'target': 0,  # Placeholder
+                        'feat_season': 'autumn',
+                        'feat_sched_flights_cnt': hour_flights,
+                        'feat_sched_concurrence': 1 if hour_flights > 1 else 0
+                    })
 
         oct_df = pd.DataFrame(oct_data)
 

@@ -62,9 +62,12 @@ Løsningen baserer seg på:
 \begin{itemize}
     \item Historiske flydata (2018-2025): 399,426 flybevegelser
     \item Eksisterende treningsdata: 465,031 time-observasjoner med targets
-    \item Oktober 2025 ruteplan: 3,984 planlagte fly
+    \item Oktober 2025 ruteplan: 4,565 planlagte fly (oppdatert versjon)
+    \item Oktober 2025 inferens-data: 5,208 time-observasjoner med pre-beregnede features
     \item 7 flyplassgrupper (A-G) med 3 flyplasser hver
 \end{itemize}
+
+\textbf{Oppdaterte datasett}: Modellen bruker de nyeste versjonene av oktober-dataene (\texttt{schedule\_oct2025\_updated.csv} og \texttt{inference\_data\_oct2025\_updated.csv}) som inneholder flere fly og korrigerte features sammenlignet med originalversjonene.
 
 \section{b. Systemstruktur og arkitektur}
 
@@ -88,7 +91,7 @@ Løsningen baserer seg på:
 
 \subsection{Dataflyt og prosessering}
 
-\textbf{Steg 1}: Innlesing av treningsdata (465,031 timer) og oktober-ruteplan (3,984 fly)
+\textbf{Steg 1}: Innlesing av treningsdata (465,031 timer), oktober-ruteplan (4,565 fly) og inferens-data (5,208 timer)
 
 \textbf{Steg 2}: Feature engineering - transformasjon av rådata til prediksjonsvariabler
 
