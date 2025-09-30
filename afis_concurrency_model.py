@@ -24,16 +24,16 @@ except ImportError:
     XGBOOST_AVAILABLE = False
     print("XGBoost not available - using Random Forest only")
 
-try:
-    import shap
-    SHAP_AVAILABLE = True
-except ImportError:
-    SHAP_AVAILABLE = False
-    print("SHAP not available - feature importance only")
+# SHAP import removed - not used in current implementation
+# try:
+#     import shap
+#     SHAP_AVAILABLE = True
+# except ImportError:
+#     SHAP_AVAILABLE = False
+#     print("SHAP not available - feature importance only")
 
 print("Environment setup complete.")
 print(f"XGBoost available: {XGBOOST_AVAILABLE}")
-print(f"SHAP available: {SHAP_AVAILABLE}")
 
 class AFISConcurrencyModel:
     """Main class for AFIS concurrency prediction model."""
